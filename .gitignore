@@ -1,0 +1,8 @@
+/target
+
+/.envrc
+/.direnv
+
+/.idea
+
+/.token
