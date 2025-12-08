@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
@@ -12,18 +12,21 @@ pub struct TokenStore {
 impl TokenStore {
     pub async fn open(
         path: impl AsRef<Path>,
-        init: impl FnOnce() -> Result<String>,
+        init: Option<String>,
     ) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
 
-        let token: String;
-        if !tokio::fs::try_exists(&path).await? {
-            info!("Initialize with new token");
-            token = init()?;
-        } else {
-            info!("Loading existing token from store");
-            token = tokio::fs::read_to_string(&path).await?.trim().to_string();
-        }
+        let token = match init {
+            Some(init) => init,
+            None => {
+                if tokio::fs::try_exists(&path).await? {
+                    info!("Loading existing token from store");
+                    tokio::fs::read_to_string(&path).await?.trim().to_string()
+                } else {
+                    bail!("No token specified and no store available");
+                }
+            }
+        };
 
         tokio::fs::write(&path, token.as_bytes()).await?;
 
