@@ -1,8 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::debug;
 
 pub struct TokenStore {
     token: RwLock<String>,
@@ -10,30 +10,31 @@ pub struct TokenStore {
 }
 
 impl TokenStore {
-    pub async fn open(
-        path: impl AsRef<Path>,
-        init: Option<String>,
-    ) -> Result<Self> {
+    pub async fn with_token(path: impl AsRef<Path>, token: String) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
-
-        let token = match init {
-            Some(init) => init,
-            None => {
-                if tokio::fs::try_exists(&path).await? {
-                    info!("Loading existing token from store");
-                    tokio::fs::read_to_string(&path).await?.trim().to_string()
-                } else {
-                    bail!("No token specified and no store available");
-                }
-            }
-        };
 
         tokio::fs::write(&path, token.as_bytes()).await?;
 
-        return Ok(Self {
+        Ok(Self {
             path,
             token: RwLock::new(token),
-        });
+        })
+    }
+
+    pub async fn open(path: impl AsRef<Path>) -> Result<Option<Self>> {
+        let path = path.as_ref().to_path_buf();
+
+        let token = if tokio::fs::try_exists(&path).await? {
+            debug!("Loading existing token from store");
+            tokio::fs::read_to_string(&path).await?.trim().to_string()
+        } else {
+            return Ok(None);
+        };
+
+        Ok(Some(Self {
+            path,
+            token: RwLock::new(token),
+        }))
     }
 
     pub async fn get(&self) -> impl Deref<Target = String> {
