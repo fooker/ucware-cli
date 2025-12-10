@@ -114,6 +114,7 @@ struct Inner {
     token: TokenStore,
 }
 
+#[derive(Clone)]
 pub struct Client {
     inner: Arc<Inner>,
 }

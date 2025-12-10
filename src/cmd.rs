@@ -47,7 +47,7 @@ pub async fn init<A: Args>() -> Result<(Client, A)> {
         Some(token) => TokenStore::with_token(".token", token).await,
     }?;
 
-    let client = Client::new(args.url.clone(), token)?;
+    let client = Client::new(args.url, token)?;
     client.refresh_token().await?;
 
     Ok((client, args.inner))
